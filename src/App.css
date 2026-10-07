@@ -1,0 +1,202 @@
+#root {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  border: 0;
+  text-align: left;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 252px minmax(0, 1fr);
+  min-height: 100vh;
+  background: #f8f7fa;
+}
+
+.barra-lateral {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  width: 252px;
+  height: 100vh;
+  padding: 28px 18px 20px;
+  box-sizing: border-box;
+  border-right: 1px solid #e9e7ed;
+  background: #fff;
+}
+
+.barra-lateral__marca {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 0 10px;
+  color: #211c2b;
+  font-size: 17px;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.barra-lateral__marca-icone {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 10px;
+  color: #fff;
+  background: #6750a4;
+  font-size: 18px;
+}
+
+.barra-lateral__nav {
+  display: grid;
+  gap: 6px;
+  margin-top: 48px;
+}
+
+.barra-lateral__rotulo {
+  margin: 0 10px 8px;
+  color: #898391;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.1px;
+}
+
+.barra-lateral__link {
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px;
+  border-radius: 8px;
+  color: #625d6b;
+  font-size: 14px;
+  font-weight: 550;
+  text-decoration: none;
+  transition: color 120ms ease, background-color 120ms ease;
+}
+
+.barra-lateral__link:hover {
+  color: #503b87;
+  background: #f6f3fc;
+}
+
+.barra-lateral__link--ativo {
+  color: #503b87;
+  background: #f0ebfa;
+  font-weight: 700;
+}
+
+.barra-lateral__link:focus-visible,
+.barra-lateral__marca:focus-visible {
+  outline: 2px solid #6750a4;
+  outline-offset: 2px;
+}
+
+.barra-lateral__rodape {
+  margin: auto 10px 0;
+  color: #898391;
+  font-size: 12px;
+}
+
+.app__conteudo {
+  min-width: 0;
+  min-height: 100vh;
+}
+
+.pagina-placeholder {
+  width: min(100% - 48px, 900px);
+  margin: 0 auto;
+  padding: 44px 0;
+  box-sizing: border-box;
+}
+
+.pagina-placeholder__identificacao {
+  color: #6750a4;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+}
+
+.pagina-placeholder h1 {
+  margin: 8px 0 24px;
+  color: #211c2b;
+  font-size: 32px;
+  letter-spacing: -0.7px;
+}
+
+.pagina-placeholder__painel {
+  padding: 24px;
+  border: 1px solid #e5e4e7;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 4px 16px rgb(20 16 31 / 5%);
+}
+
+.pagina-placeholder__painel h2 {
+  margin: 0 0 8px;
+  color: #211c2b;
+  font-size: 20px;
+}
+
+@media (max-width: 700px) {
+  .app {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .barra-lateral {
+    position: sticky;
+    z-index: 2;
+    top: 0;
+    width: 100%;
+    height: auto;
+    padding: 12px 16px 10px;
+    border-right: 0;
+    border-bottom: 1px solid #e9e7ed;
+  }
+
+  .barra-lateral__marca {
+    padding: 0 2px 10px;
+  }
+
+  .barra-lateral__marca-icone {
+    width: 30px;
+    height: 30px;
+  }
+
+  .barra-lateral__nav {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    margin-top: 0;
+    padding-bottom: 2px;
+  }
+
+  .barra-lateral__rotulo,
+  .barra-lateral__rodape {
+    display: none;
+  }
+
+  .barra-lateral__link {
+    flex: 0 0 auto;
+    min-height: 40px;
+    gap: 8px;
+    padding: 0 10px;
+    font-size: 13px;
+  }
+
+  .app__conteudo {
+    min-height: 0;
+  }
+
+  .pagina-placeholder {
+    width: min(100% - 24px, 900px);
+    padding: 28px 0;
+  }
+
+  .pagina-placeholder h1 {
+    font-size: 28px;
+  }
+}
