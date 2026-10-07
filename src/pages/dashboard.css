@@ -63,15 +63,17 @@
   min-height: 142px;
   padding: 22px;
   box-sizing: border-box;
-  border: 1px solid #e5e4e7;
-  border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 4px 16px rgb(20 16 31 / 5%);
+  border: 1px solid #e5e0ee;
+  border-top: 3px solid #9280c5;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #fff, #fcfbff);
+  box-shadow: 0 10px 24px rgb(55 38 91 / 6%);
 }
 
 .dashboard__cartao--saldo {
   border-color: #d8cef2;
-  background: #f7f4ff;
+  border-top-color: #7657c5;
+  background: linear-gradient(135deg, #f2edff, #fff);
 }
 
 .dashboard__rotulo {
@@ -91,8 +93,225 @@
   color: #167044;
 }
 
+.dashboard__cartao--receitas {
+  border-top-color: #48a982;
+}
+
 .dashboard__cartao--despesas strong {
   color: #b42318;
+}
+
+.dashboard__cartao--despesas {
+  border-top-color: #db746c;
+}
+
+.app[data-tema="escuro"] .dashboard__cartao,
+.app[data-tema="escuro"] .dashboard__alertas,
+.app[data-tema="escuro"] .dashboard__kpi,
+.app[data-tema="escuro"] .dashboard__painel-meta,
+.app[data-tema="escuro"] .dashboard__grafico-painel {
+  border-color: var(--borda);
+  background: linear-gradient(145deg, var(--superficie), var(--superficie-sutil));
+  box-shadow: var(--sombra);
+}
+
+.app[data-tema="escuro"] .dashboard__cartao--saldo {
+  border-top-color: #a48ae8;
+  background: linear-gradient(135deg, #30294a, #202b3d);
+}
+
+.app[data-tema="escuro"] .dashboard__cartao--receitas {
+  border-top-color: #54c59a;
+}
+
+.app[data-tema="escuro"] .dashboard__cartao--despesas {
+  border-top-color: #f08077;
+}
+
+.app[data-tema="escuro"] .dashboard__cartao strong,
+.app[data-tema="escuro"] .dashboard__kpi > strong,
+.app[data-tema="escuro"] .dashboard__meta-valores strong,
+.app[data-tema="escuro"] .dashboard__grafico-cabecalho h2,
+.app[data-tema="escuro"] .dashboard__alertas-cabecalho h2 {
+  color: var(--texto);
+}
+
+.app[data-tema="escuro"] .dashboard__rotulo,
+.app[data-tema="escuro"] .dashboard__descricao,
+.app[data-tema="escuro"] .dashboard__meta-valores,
+.app[data-tema="escuro"] .dashboard__grafico-cabecalho p,
+.app[data-tema="escuro"] .dashboard__grafico-vazio,
+.app[data-tema="escuro"] .dashboard__alertas-vazio {
+  color: var(--texto-suave);
+}
+
+.app[data-tema="escuro"] .dashboard__identificacao,
+.app[data-tema="escuro"] .dashboard__meta-pendente {
+  color: #c4b3fa !important;
+}
+
+.app[data-tema="escuro"] .dashboard__cabecalho h1 {
+  color: var(--texto);
+}
+
+.app[data-tema="escuro"] .dashboard__filtro,
+.app[data-tema="escuro"] .dashboard__form-meta label {
+  color: #d6dbea;
+}
+
+.app[data-tema="escuro"] .dashboard__filtro input,
+.app[data-tema="escuro"] .dashboard__entrada-meta {
+  border-color: var(--borda);
+  color: var(--texto);
+  background: #182234;
+}
+
+.app[data-tema="escuro"] .dashboard__entrada-meta input {
+  color: var(--texto);
+}
+
+.app[data-tema="escuro"] .dashboard__alertas-cabecalho > span {
+  color: #dce2ed;
+  background: #344156;
+}
+
+.app[data-tema="escuro"] .dashboard__alerta--aviso {
+  border-color: #715b31;
+  color: #f3cf80;
+  background: #342d20;
+}
+
+.app[data-tema="escuro"] .dashboard__alerta--erro {
+  border-color: #71403f;
+  color: #ffaaa4;
+  background: #382526;
+}
+
+.app[data-tema="escuro"] .dashboard__alerta--sucesso {
+  border-color: #315f4c;
+  color: #8cdbb3;
+  background: #20352d;
+}
+
+.app[data-tema="escuro"] .dashboard__meta-progresso {
+  background: #344156;
+}
+
+.app[data-tema="escuro"] .dashboard__meta-atingida,
+.app[data-tema="escuro"] .dashboard__mensagem-sucesso {
+  color: #8cdbb3 !important;
+}
+
+.app[data-tema="escuro"] .dashboard__mensagem-erro {
+  color: #ffaaa4;
+}
+
+.app[data-tema="escuro"] .dashboard__grafico text {
+  fill: #c3cada !important;
+}
+
+.app[data-tema="escuro"] .dashboard__grafico line,
+.app[data-tema="escuro"] .dashboard__grafico path[stroke] {
+  stroke: #45536a;
+}
+
+.app[data-tema="escuro"] .dashboard__grafico rect[fill="#fff"],
+.app[data-tema="escuro"] .dashboard__grafico .recharts-tooltip-wrapper > div {
+  fill: #202b3d;
+  background: #202b3d;
+}
+
+.app[data-tema="escuro"] .dashboard__grafico .recharts-default-tooltip {
+  border-color: #45536a !important;
+  background: #202b3d !important;
+}
+
+.dashboard__alertas {
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid #e5e4e7;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 4px 16px rgb(20 16 31 / 5%);
+}
+
+.dashboard__alertas-cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.dashboard__alertas-cabecalho h2 {
+  margin: 0;
+  color: #211c2b;
+  font-size: 18px;
+  font-weight: 650;
+}
+
+.dashboard__alertas-cabecalho > span {
+  display: grid;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 6px;
+  place-items: center;
+  box-sizing: border-box;
+  border-radius: 999px;
+  color: #625d6b;
+  background: #f1f0f3;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dashboard__alertas-vazio {
+  color: #716b7b;
+  font-size: 14px;
+}
+
+.dashboard__alertas-lista {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dashboard__alerta {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+
+.dashboard__alerta > span {
+  flex: 0 0 auto;
+  font-weight: 700;
+}
+
+.dashboard__alerta p {
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.dashboard__alerta--aviso {
+  border-color: #f0d99f;
+  color: #80500a;
+  background: #fff8e8;
+}
+
+.dashboard__alerta--erro {
+  border-color: #efc3bf;
+  color: #a32118;
+  background: #fff5f4;
+}
+
+.dashboard__alerta--sucesso {
+  border-color: #b9dfc7;
+  color: #17613f;
+  background: #eff9f2;
 }
 
 .dashboard__kpis-adicionais {
@@ -109,10 +328,10 @@
   min-height: 122px;
   padding: 18px;
   box-sizing: border-box;
-  border: 1px solid #e5e4e7;
-  border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 4px 16px rgb(20 16 31 / 5%);
+  border: 1px solid #e8e3ef;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #fff, #fcfbff);
+  box-shadow: 0 10px 24px rgb(55 38 91 / 5%);
 }
 
 .dashboard__kpi > strong {

@@ -3,7 +3,9 @@ import {
   ChartNoAxesCombined,
   CreditCard,
   LayoutDashboard,
+  ListChecks,
   Settings,
+  Tags,
 } from "lucide-react";
 import { useState } from "react";
 import {
@@ -17,12 +19,17 @@ import Dashboard from "./pages/dashboard";
 import Lancamentos from "./pages/lancamentos";
 import Orcamentos from "./pages/orcamentos";
 import Cartoes from "./pages/cartoes";
+import Parcelamentos from "./pages/parcelamentos";
+import CentrosDeCusto from "./pages/centros-de-custo";
+import Configuracoes from "./pages/configuracoes";
 import {
   carregarCartoes,
+  carregarCentrosDeCusto,
   carregarLancamentos,
   carregarMetasEconomia,
   carregarOrcamentos,
   salvarCartoes,
+  salvarCentrosDeCusto,
   salvarMetasEconomia,
   salvarOrcamentos,
 } from "./services/storage";
@@ -33,26 +40,21 @@ const paginas = [
   { caminho: "/lancamentos", nome: "Lançamentos", Icone: ArrowLeftRight },
   { caminho: "/orcamentos", nome: "Orçamentos", Icone: ChartNoAxesCombined },
   { caminho: "/cartoes", nome: "Cartões", Icone: CreditCard },
+  { caminho: "/parcelamentos", nome: "Parcelamentos", Icone: ListChecks },
+  { caminho: "/centros-de-custo", nome: "Centros de custo", Icone: Tags },
   { caminho: "/configuracoes", nome: "Configurações", Icone: Settings },
 ];
 
-function PaginaEmConstrucao({ titulo }) {
-  return (
-    <main className="pagina-placeholder">
-      <p className="pagina-placeholder__identificacao">CONTROLE FINANCEIRO</p>
-      <h1>{titulo}</h1>
-      <section className="pagina-placeholder__painel">
-        <h2>Em breve</h2>
-        <p>Esta área está sendo preparada e estará disponível em breve.</p>
-      </section>
-    </main>
-  );
-}
-
 function App() {
+  const [tema, setTema] = useState(() => {
+    const temaSalvo = localStorage.getItem("tema");
+    return temaSalvo === "escuro" ? "escuro" : "claro";
+  });
+  const [erroTema, setErroTema] = useState("");
   const [lancamentos, setLancamentos] = useState(carregarLancamentos);
   const [orcamentos, setOrcamentos] = useState(carregarOrcamentos);
   const [cartoes, setCartoes] = useState(carregarCartoes);
+  const [centrosDeCusto, setCentrosDeCusto] = useState(carregarCentrosDeCusto);
   const [metasEconomia, setMetasEconomia] = useState(carregarMetasEconomia);
   const [mesSelecionado, setMesSelecionado] = useState(() => {
     const hoje = new Date();
@@ -73,13 +75,28 @@ function App() {
     setCartoes(novosCartoes);
   }
 
+  function atualizarCentrosDeCusto(novosCentros) {
+    salvarCentrosDeCusto(novosCentros);
+    setCentrosDeCusto(novosCentros);
+  }
+
   function atualizarMetasEconomia(novasMetas) {
     salvarMetasEconomia(novasMetas);
     setMetasEconomia(novasMetas);
   }
 
+  function atualizarTema(novoTema) {
+    try {
+      localStorage.setItem("tema", novoTema);
+      setTema(novoTema);
+      setErroTema("");
+    } catch {
+      setErroTema("Não foi possível salvar sua preferência neste navegador.");
+    }
+  }
+
   return (
-    <div className="app">
+    <div className="app" data-tema={tema}>
       <aside className="barra-lateral">
         <Link className="barra-lateral__marca" to="/dashboard">
           <span className="barra-lateral__marca-icone" aria-hidden="true">C</span>
@@ -115,6 +132,9 @@ function App() {
                 lancamentos={lancamentos}
                 mesSelecionado={mesSelecionado}
                 onMesChange={setMesSelecionado}
+                orcamentos={orcamentos}
+                cartoes={cartoes}
+                centrosDeCusto={centrosDeCusto}
                 metasEconomia={metasEconomia}
                 onMetasEconomiaChange={atualizarMetasEconomia}
               />
@@ -126,6 +146,7 @@ function App() {
               <Lancamentos
                 lancamentos={lancamentos}
                 cartoes={cartoes}
+                centrosDeCusto={centrosDeCusto}
                 mesSelecionado={mesSelecionado}
                 onLancamentosChange={setLancamentos}
               />
@@ -158,8 +179,42 @@ function App() {
             }
           />
           <Route
+            path="/parcelamentos"
+            element={
+              <Parcelamentos
+                lancamentos={lancamentos}
+                cartoes={cartoes}
+              />
+            }
+          />
+          <Route
+            path="/centros-de-custo"
+            element={
+              <CentrosDeCusto
+                centros={centrosDeCusto}
+                lancamentos={lancamentosDoMes}
+                mesSelecionado={mesSelecionado}
+                onMesChange={setMesSelecionado}
+                onCentrosChange={atualizarCentrosDeCusto}
+              />
+            }
+          />
+          <Route
             path="/configuracoes"
-            element={<PaginaEmConstrucao titulo="Configurações" />}
+            element={
+              <Configuracoes
+                tema={tema}
+                onTemaChange={atualizarTema}
+                erro={erroTema}
+                lancamentos={lancamentos}
+                orcamentos={orcamentos}
+                cartoes={cartoes}
+                centrosDeCusto={centrosDeCusto}
+                metasEconomia={metasEconomia}
+                mesSelecionado={mesSelecionado}
+                onMesChange={setMesSelecionado}
+              />
+            }
           />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

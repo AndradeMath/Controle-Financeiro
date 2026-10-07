@@ -31,13 +31,14 @@
 .lancamentos__painel {
   margin-bottom: 24px;
   padding: 24px;
-  border: 1px solid #e5e4e7;
-  border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 4px 16px rgb(20 16 31 / 5%);
+  border: 1px solid #e8e3ef;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #fff, #fcfbff);
+  box-shadow: 0 10px 24px rgb(55 38 91 / 5%);
 }
 
 .lancamentos__painel h2 {
+  color: #292238;
   margin: 0 0 20px;
   font-size: 20px;
   font-weight: 650;
@@ -76,6 +77,12 @@
   outline: 2px solid rgb(103 80 164 / 18%);
 }
 
+.lancamentos__botoes-formulario {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .lancamentos__formulario button {
   align-self: end;
   min-height: 44px;
@@ -89,13 +96,30 @@
   cursor: pointer;
 }
 
-.lancamentos__formulario button:hover {
+.lancamentos__formulario button[type="submit"]:hover {
   background: #503b87;
+}
+
+.lancamentos__formulario .lancamentos__cancelar {
+  border: 1px solid #d8d5df;
+  color: #625d6b;
+  background: #fff;
+}
+
+.lancamentos__formulario .lancamentos__cancelar:hover {
+  background: #f5f3f8;
 }
 
 .lancamentos__mensagem {
   margin-top: 14px;
   font-size: 14px;
+}
+
+.lancamentos__ajuda-parcelas {
+  margin: 14px 0 0;
+  color: #716b7b;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .lancamentos__mensagem--erro {
@@ -152,6 +176,82 @@
   color: #211c2b;
 }
 
+.app[data-tema="escuro"] .lancamentos__cabecalho h1,
+.app[data-tema="escuro"] .lancamentos__painel h2,
+.app[data-tema="escuro"] .lancamentos__item > div > strong {
+  color: var(--texto);
+}
+
+.app[data-tema="escuro"] .lancamentos__cabecalho > p:last-child,
+.app[data-tema="escuro"] .lancamentos__item > div > span,
+.app[data-tema="escuro"] .lancamentos__lista-cabecalho span,
+.app[data-tema="escuro"] .lancamentos__vazio,
+.app[data-tema="escuro"] .lancamentos__ajuda-parcelas {
+  color: var(--texto-suave);
+}
+
+.app[data-tema="escuro"] .lancamentos__identificacao {
+  color: #c4b3fa;
+}
+
+.app[data-tema="escuro"] .lancamentos__painel {
+  border-color: var(--borda);
+  background: linear-gradient(145deg, var(--superficie), var(--superficie-sutil));
+  box-shadow: var(--sombra);
+}
+
+.app[data-tema="escuro"] .lancamentos__formulario label {
+  color: #d6dbea;
+}
+
+.app[data-tema="escuro"] .lancamentos__formulario input,
+.app[data-tema="escuro"] .lancamentos__formulario select {
+  border-color: #45536a;
+  color: var(--texto);
+  background: #182234;
+}
+
+.app[data-tema="escuro"] .lancamentos__formulario input::placeholder {
+  color: #8995aa;
+}
+
+.app[data-tema="escuro"] .lancamentos__item {
+  border-color: #344156;
+}
+
+.app[data-tema="escuro"] .lancamentos__editar,
+.app[data-tema="escuro"] .lancamentos__formulario .lancamentos__cancelar {
+  border-color: #4c5a70;
+  color: #d0c2fa;
+  background: #263247;
+}
+
+.app[data-tema="escuro"] .lancamentos__editar:hover,
+.app[data-tema="escuro"] .lancamentos__formulario .lancamentos__cancelar:hover {
+  background: #35415a;
+}
+
+.app[data-tema="escuro"] .lancamentos__excluir {
+  border-color: #71403f;
+  color: #ffaaa4;
+  background: #382526;
+}
+
+.app[data-tema="escuro"] .lancamentos__excluir:hover {
+  border-color: #a8504b;
+  background: #482b2c;
+}
+
+.app[data-tema="escuro"] .lancamentos__mensagem--erro,
+.app[data-tema="escuro"] .lancamentos__valor--despesa {
+  color: #ffaaa4;
+}
+
+.app[data-tema="escuro"] .lancamentos__mensagem--sucesso,
+.app[data-tema="escuro"] .lancamentos__valor--receita {
+  color: #8cdbb3;
+}
+
 .lancamentos__valor {
   white-space: nowrap;
 }
@@ -172,6 +272,23 @@
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+}
+
+.lancamentos__editar {
+  padding: 7px 10px;
+  border: 1px solid #d8d5df;
+  border-radius: 6px;
+  color: #503b87;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.lancamentos__editar:hover {
+  border-color: #6750a4;
+  background: #f6f3fc;
 }
 
 .lancamentos__excluir:hover {
@@ -218,5 +335,9 @@
     flex-direction: column;
     align-items: flex-end;
     gap: 8px;
+  }
+
+  .lancamentos__botoes-formulario {
+    flex-wrap: wrap;
   }
 }
