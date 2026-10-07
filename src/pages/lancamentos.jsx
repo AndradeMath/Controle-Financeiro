@@ -2,6 +2,7 @@ import { useState } from "react";
 import { salvarLancamentos } from "../services/storage";
 import { categorias } from "../data/categorias";
 import "./lancamentos.css";
+import { supabase } from "../lib/supabase";
 
 function formatarData(data) {
   return new Intl.DateTimeFormat("pt-BR").format(new Date(`${data}T00:00:00`));
@@ -33,6 +34,8 @@ function Lancamentos({
   const [valor, setValor] = useState("");
   const [erro, setErro] = useState("");
   const [sucesso, setSucesso] = useState("");
+  const [testandoSupabase, setTestandoSupabase] = useState(false);
+  const [resultadoSupabase, setResultadoSupabase] = useState(null);
   const [indiceEmEdicao, setIndiceEmEdicao] = useState(null);
 
   function limparFormulario() {
@@ -47,6 +50,49 @@ function Lancamentos({
     setFormaPagamento("Débito");
     setValor("");
     setIndiceEmEdicao(null);
+  }
+
+  async function testarSupabase() {
+    setTestandoSupabase(true);
+    setResultadoSupabase(null);
+
+    try {
+      const { data, error } = await supabase
+        .from("lancamentos")
+        .insert([
+          {
+            descricao: "Mercado",
+            categoria: "Alimentação",
+            tipo: "Despesa",
+            valor: 100,
+          },
+        ]);
+
+      console.log("DATA:", data);
+      console.log("ERROR:", error);
+
+      if (error) {
+        setResultadoSupabase({
+          tipo: "erro",
+          mensagem: `Falha no teste Supabase: ${error.message}`,
+        });
+        return;
+      }
+
+      setResultadoSupabase({
+        tipo: "sucesso",
+        mensagem:
+          "Conexão com Supabase funcionando. O lançamento temporário de teste foi inserido na tabela lancamentos.",
+      });
+    } catch (erroTeste) {
+      console.error("Erro inesperado ao testar Supabase:", erroTeste);
+      setResultadoSupabase({
+        tipo: "erro",
+        mensagem: `Não foi possível testar o Supabase: ${erroTeste.message}`,
+      });
+    } finally {
+      setTestandoSupabase(false);
+    }
   }
 
   function salvarLancamento(event) {
@@ -399,6 +445,31 @@ function Lancamentos({
         )}
         {erro && <p className="lancamentos__mensagem lancamentos__mensagem--erro" role="alert">{erro}</p>}
         {sucesso && <p className="lancamentos__mensagem lancamentos__mensagem--sucesso" role="status">{sucesso}</p>}
+      </section>
+
+      <section className="lancamentos__painel lancamentos__teste-supabase" aria-labelledby="teste-supabase-titulo">
+        <div>
+          <h2 id="teste-supabase-titulo">Teste temporário do Supabase</h2>
+          <p>
+            Insere um lançamento de teste de R$ 100,00 na tabela
+            {" "}lancamentos do Supabase.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={testarSupabase}
+          disabled={testandoSupabase}
+        >
+          {testandoSupabase ? "Testando conexão..." : "Testar conexão Supabase"}
+        </button>
+        {resultadoSupabase && (
+          <p
+            className={`lancamentos__resultado-supabase lancamentos__resultado-supabase--${resultadoSupabase.tipo}`}
+            role={resultadoSupabase.tipo === "erro" ? "alert" : "status"}
+          >
+            {resultadoSupabase.mensagem}
+          </p>
+        )}
       </section>
 
       <section className="lancamentos__painel" aria-labelledby="lista-titulo">
