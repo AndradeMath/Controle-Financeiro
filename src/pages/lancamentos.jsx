@@ -34,8 +34,7 @@ function Lancamentos({
   const [valor, setValor] = useState("");
   const [erro, setErro] = useState("");
   const [sucesso, setSucesso] = useState("");
-  const [testandoSupabase, setTestandoSupabase] = useState(false);
-  const [resultadoSupabase, setResultadoSupabase] = useState(null);
+  const [salvando, setSalvando] = useState(false);
   const [indiceEmEdicao, setIndiceEmEdicao] = useState(null);
 
   function limparFormulario() {
@@ -52,50 +51,22 @@ function Lancamentos({
     setIndiceEmEdicao(null);
   }
 
-  async function testarSupabase() {
-    setTestandoSupabase(true);
-    setResultadoSupabase(null);
-
-    try {
-      const { data, error } = await supabase
-        .from("lancamentos")
-        .insert([
-          {
-            descricao: "Mercado",
-            categoria: "Alimentação",
-            tipo: "Despesa",
-            valor: 100,
-          },
-        ]);
-
-      console.log("DATA:", data);
-      console.log("ERROR:", error);
-
-      if (error) {
-        setResultadoSupabase({
-          tipo: "erro",
-          mensagem: `Falha no teste Supabase: ${error.message}`,
-        });
-        return;
-      }
-
-      setResultadoSupabase({
-        tipo: "sucesso",
-        mensagem:
-          "Conexão com Supabase funcionando. O lançamento temporário de teste foi inserido na tabela lancamentos.",
-      });
-    } catch (erroTeste) {
-      console.error("Erro inesperado ao testar Supabase:", erroTeste);
-      setResultadoSupabase({
-        tipo: "erro",
-        mensagem: `Não foi possível testar o Supabase: ${erroTeste.message}`,
-      });
-    } finally {
-      setTestandoSupabase(false);
-    }
+  function mapearParaSupabase(lancamento) {
+    return {
+      descricao: lancamento.descricao,
+      categoria: lancamento.categoria,
+      subcategoria: lancamento.subcategoria || null,
+      data: lancamento.data,
+      tipo: lancamento.tipo,
+      forma_pagamento: lancamento.formaPagamento,
+      cartao: lancamento.cartaoId || null,
+      valor: lancamento.valor,
+      parcelaAtual: lancamento.parcelaAtual ?? null,
+      totalParcelas: lancamento.totalParcelas ?? null,
+    };
   }
 
-  function salvarLancamento(event) {
+  async function salvarLancamento(event) {
     event.preventDefault();
     setErro("");
     setSucesso("");
@@ -137,6 +108,9 @@ function Lancamentos({
               0,
             ) + 1
           : lancamentos[indiceEmEdicao].idTransacao,
+      ...(indiceEmEdicao !== null && lancamentos[indiceEmEdicao].supabaseId
+        ? { supabaseId: lancamentos[indiceEmEdicao].supabaseId }
+        : {}),
       data,
       descricao: descricaoLimpa,
       categoria: categoriaLimpa,
@@ -161,25 +135,52 @@ function Lancamentos({
       novaLista[indiceEmEdicao] = novoLancamento;
     }
 
+    setSalvando(true);
     try {
-      salvarLancamentos(novaLista);
-    } catch {
-      setErro(
-        indiceEmEdicao === null
-          ? "Não foi possível salvar o lançamento. Tente novamente."
-          : "Não foi possível atualizar o lançamento. Tente novamente.",
-      );
+      let lancamentoPersistido = novoLancamento;
+      const supabaseId = novoLancamento.supabaseId;
+      const resposta = supabaseId
+        ? await supabase
+            .from("lancamentos")
+            .update(mapearParaSupabase(novoLancamento))
+            .eq("id", supabaseId)
+            .select("id")
+            .single()
+        : await supabase
+            .from("lancamentos")
+            .insert(mapearParaSupabase(novoLancamento))
+            .select("id")
+            .single();
+
+      if (resposta.error) throw new Error(resposta.error.message);
+
+      lancamentoPersistido = {
+        ...novoLancamento,
+        supabaseId: resposta.data.id,
+      };
+      novaLista[indiceEmEdicao === null ? novaLista.length - 1 : indiceEmEdicao] =
+        lancamentoPersistido;
+    } catch (erroSupabase) {
+      setErro(`Não foi possível salvar no Supabase: ${erroSupabase.message}`);
+      setSalvando(false);
       return;
     }
 
     onLancamentosChange(novaLista);
+    try {
+      salvarLancamentos(novaLista);
+    } catch {
+      setErro("O lançamento foi salvo no Supabase, mas não foi possível atualizar o armazenamento local.");
+    }
+
     const estavaEditando = indiceEmEdicao !== null;
     limparFormulario();
     setSucesso(
       estavaEditando
-        ? "Lançamento atualizado com sucesso."
-        : "Lançamento salvo com sucesso.",
+        ? "Lançamento atualizado com sucesso no Supabase."
+        : "Lançamento salvo com sucesso no Supabase.",
     );
+    setSalvando(false);
   }
 
   function editarLancamento(indice) {
@@ -206,7 +207,7 @@ function Lancamentos({
     setSucesso("");
   }
 
-  function excluirLancamento(indice) {
+  async function excluirLancamento(indice) {
     const lancamento = lancamentos[indice];
     const confirmado = window.confirm(
       `Deseja excluir o lançamento "${lancamento.descricao}"?`,
@@ -216,22 +217,43 @@ function Lancamentos({
 
     const novaLista = lancamentos.filter((_, itemIndice) => itemIndice !== indice);
 
+    setErro("");
+    setSucesso("");
     try {
-      salvarLancamentos(novaLista);
-    } catch {
-      setErro("Não foi possível excluir o lançamento. Tente novamente.");
-      setSucesso("");
+      if (lancamento.supabaseId) {
+        const { error: erroSupabase } = await supabase
+          .from("lancamentos")
+          .delete()
+          .eq("id", lancamento.supabaseId)
+          .select("id")
+          .single();
+        if (erroSupabase) throw new Error(erroSupabase.message);
+      }
+    } catch (erroSupabase) {
+      setErro(`Não foi possível excluir o lançamento: ${erroSupabase.message}`);
       return;
     }
 
     onLancamentosChange(novaLista);
+    try {
+      salvarLancamentos(novaLista);
+    } catch {
+      setErro(
+        lancamento.supabaseId
+          ? "O lançamento foi excluído do Supabase, mas não foi possível atualizar o armazenamento local."
+          : "O lançamento foi removido da lista, mas não foi possível atualizar o armazenamento local.",
+      );
+    }
     if (indiceEmEdicao === indice) {
       limparFormulario();
     } else if (indiceEmEdicao !== null && indice < indiceEmEdicao) {
       setIndiceEmEdicao(indiceEmEdicao - 1);
     }
-    setErro("");
-    setSucesso("Lançamento excluído com sucesso.");
+    setSucesso(
+      lancamento.supabaseId
+        ? "Lançamento excluído com sucesso no Supabase."
+        : "Lançamento local excluído com sucesso.",
+    );
   }
 
   const lancamentosDoMes = lancamentos
@@ -419,13 +441,18 @@ function Lancamentos({
           </label>
 
           <div className="lancamentos__botoes-formulario">
-            <button type="submit">
-              {indiceEmEdicao === null ? "Salvar lançamento" : "Salvar alterações"}
+            <button type="submit" disabled={salvando}>
+              {salvando
+                ? "Salvando..."
+                : indiceEmEdicao === null
+                  ? "Salvar lançamento"
+                  : "Salvar alterações"}
             </button>
             {indiceEmEdicao !== null && (
               <button
                 className="lancamentos__cancelar"
                 type="button"
+                disabled={salvando}
                 onClick={() => {
                   limparFormulario();
                   setErro("");
@@ -445,31 +472,6 @@ function Lancamentos({
         )}
         {erro && <p className="lancamentos__mensagem lancamentos__mensagem--erro" role="alert">{erro}</p>}
         {sucesso && <p className="lancamentos__mensagem lancamentos__mensagem--sucesso" role="status">{sucesso}</p>}
-      </section>
-
-      <section className="lancamentos__painel lancamentos__teste-supabase" aria-labelledby="teste-supabase-titulo">
-        <div>
-          <h2 id="teste-supabase-titulo">Teste temporário do Supabase</h2>
-          <p>
-            Insere um lançamento de teste de R$ 100,00 na tabela
-            {" "}lancamentos do Supabase.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={testarSupabase}
-          disabled={testandoSupabase}
-        >
-          {testandoSupabase ? "Testando conexão..." : "Testar conexão Supabase"}
-        </button>
-        {resultadoSupabase && (
-          <p
-            className={`lancamentos__resultado-supabase lancamentos__resultado-supabase--${resultadoSupabase.tipo}`}
-            role={resultadoSupabase.tipo === "erro" ? "alert" : "status"}
-          >
-            {resultadoSupabase.mensagem}
-          </p>
-        )}
       </section>
 
       <section className="lancamentos__painel" aria-labelledby="lista-titulo">
@@ -502,6 +504,7 @@ function Lancamentos({
                       className="lancamentos__editar"
                       type="button"
                       aria-label={`Editar lançamento ${lancamento.descricao}`}
+                      disabled={salvando}
                       onClick={() => editarLancamento(indiceOriginal)}
                     >
                       Editar
@@ -510,6 +513,7 @@ function Lancamentos({
                       className="lancamentos__excluir"
                       type="button"
                       aria-label={`Excluir lançamento ${lancamento.descricao}`}
+                      disabled={salvando}
                       onClick={() => excluirLancamento(indiceOriginal)}
                     >
                       Excluir
