@@ -4,10 +4,11 @@ import {
   CreditCard,
   LayoutDashboard,
   ListChecks,
+  LogOut,
   Settings,
   Tags,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Navigate,
   Link,
@@ -16,6 +17,8 @@ import {
   Routes,
 } from "react-router-dom";
 import Dashboard from "./pages/dashboard";
+import Login from "./pages/login";
+import Cadastro from "./pages/cadastro";
 import Lancamentos from "./pages/lancamentos";
 import Orcamentos from "./pages/orcamentos";
 import Cartoes from "./pages/cartoes";
@@ -25,7 +28,6 @@ import Configuracoes from "./pages/configuracoes";
 import {
   carregarCartoes,
   carregarCentrosDeCusto,
-  carregarLancamentos,
   carregarMetasEconomia,
   carregarOrcamentos,
   salvarCartoes,
@@ -33,6 +35,9 @@ import {
   salvarMetasEconomia,
   salvarOrcamentos,
 } from "./services/storage";
+import { supabase } from "./lib/supabase";
+import { AuthContext } from "./contexts/AuthContext";
+import { carregarLancamentosDoUsuario } from "./services/lancamentosSupabase";
 import "./App.css";
 
 const paginas = [
@@ -46,12 +51,27 @@ const paginas = [
 ];
 
 function App() {
+  const [sessao, setSessao] = useState(null);
+  const [carregandoSessao, setCarregandoSessao] = useState(true);
+  const [erroSessao, setErroSessao] = useState("");
+  const [erroSaida, setErroSaida] = useState("");
+  const [lancamentosCarregadosParaUsuarioId, setLancamentosCarregadosParaUsuarioId] = useState(null);
+  const [erroLancamentos, setErroLancamentos] = useState(null);
+  const [tentativaCargaLancamentos, setTentativaCargaLancamentos] = useState(0);
+  const contextoAutenticacao = useMemo(
+    () => ({
+      session: sessao,
+      user: sessao?.user ?? null,
+      usuarioId: sessao?.user?.id ?? null,
+    }),
+    [sessao],
+  );
   const [tema, setTema] = useState(() => {
     const temaSalvo = localStorage.getItem("tema");
     return temaSalvo === "escuro" ? "escuro" : "claro";
   });
   const [erroTema, setErroTema] = useState("");
-  const [lancamentos, setLancamentos] = useState(carregarLancamentos);
+  const [lancamentos, setLancamentos] = useState([]);
   const [orcamentos, setOrcamentos] = useState(carregarOrcamentos);
   const [cartoes, setCartoes] = useState(carregarCartoes);
   const [centrosDeCusto, setCentrosDeCusto] = useState(carregarCentrosDeCusto);
@@ -64,6 +84,75 @@ function App() {
   const lancamentosDoMes = lancamentos.filter((lancamento) =>
     lancamento.data.startsWith(mesSelecionado),
   );
+
+  useEffect(() => {
+    let componenteAtivo = true;
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_evento, novaSessao) => {
+      if (!componenteAtivo) return;
+      setSessao(novaSessao);
+      setCarregandoSessao(false);
+      setErroSessao("");
+    });
+
+    supabase.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (error) throw error;
+        if (!componenteAtivo) return;
+        setSessao(data.session);
+        setCarregandoSessao(false);
+      })
+      .catch((erro) => {
+        if (!componenteAtivo) return;
+        setErroSessao(erro.message);
+        setCarregandoSessao(false);
+      });
+
+    return () => {
+      componenteAtivo = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    const usuarioId = sessao?.user?.id;
+    let componenteAtivo = true;
+
+    if (!usuarioId) {
+      return () => {
+        componenteAtivo = false;
+      };
+    }
+
+    carregarLancamentosDoUsuario(usuarioId)
+      .then((dados) => {
+        if (!componenteAtivo) return;
+        setLancamentos(dados);
+        setLancamentosCarregadosParaUsuarioId(usuarioId);
+        setErroLancamentos(null);
+      })
+      .catch((erro) => {
+        if (componenteAtivo) {
+          setErroLancamentos({ usuarioId, mensagem: erro.message });
+        }
+      });
+
+    return () => {
+      componenteAtivo = false;
+    };
+  }, [sessao?.user?.id, tentativaCargaLancamentos]);
+
+  async function sair() {
+    setErroSaida("");
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) setErroSaida(`Não foi possível sair: ${error.message}`);
+    } catch (erro) {
+      setErroSaida(`Não foi possível sair: ${erro.message}`);
+    }
+  }
 
   function atualizarOrcamentos(novosOrcamentos) {
     salvarOrcamentos(novosOrcamentos);
@@ -95,9 +184,70 @@ function App() {
     }
   }
 
+  if (carregandoSessao) {
+    return (
+      <main className="autenticacao-carregando" role="status">
+        Verificando sessão...
+      </main>
+    );
+  }
+
+  if (erroSessao) {
+    return (
+      <main className="autenticacao-carregando" role="alert">
+        <p>Não foi possível verificar a sessão: {erroSessao}</p>
+        <button type="button" onClick={() => window.location.reload()}>
+          Tentar novamente
+        </button>
+      </main>
+    );
+  }
+
+  if (!sessao) {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/cadastro" element={<Cadastro />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    );
+  }
+
+  if (
+    lancamentosCarregadosParaUsuarioId !== sessao.user.id &&
+    erroLancamentos?.usuarioId !== sessao.user.id
+  ) {
+    return (
+      <main className="autenticacao-carregando" role="status">
+        Carregando seus lançamentos...
+      </main>
+    );
+  }
+
+  if (erroLancamentos?.usuarioId === sessao.user.id) {
+    return (
+      <main className="autenticacao-carregando" role="alert">
+        <p>{erroLancamentos.mensagem}</p>
+        <button
+          type="button"
+          onClick={() => {
+            setErroLancamentos(null);
+            setTentativaCargaLancamentos((tentativa) => tentativa + 1);
+          }}
+        >
+          Tentar novamente
+        </button>
+        <button type="button" onClick={sair}>
+          Sair
+        </button>
+      </main>
+    );
+  }
+
   return (
-    <div className="app" data-tema={tema}>
-      <aside className="barra-lateral">
+    <AuthContext.Provider value={contextoAutenticacao}>
+      <div className="app" data-tema={tema}>
+        <aside className="barra-lateral">
         <Link className="barra-lateral__marca" to="/dashboard">
           <span className="barra-lateral__marca-icone" aria-hidden="true">C</span>
           <span>Meu Financeiro</span>
@@ -119,12 +269,28 @@ function App() {
           ))}
         </nav>
 
-        <p className="barra-lateral__rodape">Suas finanças, organizadas.</p>
-      </aside>
+        <div className="barra-lateral__conta">
+          <p className="barra-lateral__usuario">{sessao.user.email}</p>
+          <button
+            className="barra-lateral__sair"
+            type="button"
+            onClick={sair}
+          >
+            <LogOut size={17} aria-hidden="true" />
+            <span>Sair</span>
+          </button>
+          {erroSaida && (
+            <p className="barra-lateral__erro" role="alert">{erroSaida}</p>
+          )}
+          <p className="barra-lateral__rodape">Suas finanças, organizadas.</p>
+        </div>
+        </aside>
 
-      <div className="app__conteudo">
-        <Routes>
+        <div className="app__conteudo">
+          <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/cadastro" element={<Navigate to="/dashboard" replace />} />
           <Route
             path="/dashboard"
             element={
@@ -217,9 +383,10 @@ function App() {
             }
           />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
+          </Routes>
+        </div>
       </div>
-    </div>
+    </AuthContext.Provider>
   );
 }
 

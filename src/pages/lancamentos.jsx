@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { salvarLancamentos } from "../services/storage";
 import { categorias } from "../data/categorias";
 import "./lancamentos.css";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "../contexts/AuthContext";
 
 function formatarData(data) {
   return new Intl.DateTimeFormat("pt-BR").format(new Date(`${data}T00:00:00`));
@@ -22,6 +22,7 @@ function Lancamentos({
   mesSelecionado,
   onLancamentosChange,
 }) {
+  const { usuarioId } = useAuth();
   const [data, setData] = useState("");
   const [descricao, setDescricao] = useState("");
   const [categoria, setCategoria] = useState("");
@@ -53,6 +54,7 @@ function Lancamentos({
 
   function mapearParaSupabase(lancamento) {
     return {
+      user_id: usuarioId,
       descricao: lancamento.descricao,
       categoria: lancamento.categoria,
       subcategoria: lancamento.subcategoria || null,
@@ -144,6 +146,7 @@ function Lancamentos({
             .from("lancamentos")
             .update(mapearParaSupabase(novoLancamento))
             .eq("id", supabaseId)
+            .eq("user_id", usuarioId)
             .select("id")
             .single()
         : await supabase
@@ -167,11 +170,6 @@ function Lancamentos({
     }
 
     onLancamentosChange(novaLista);
-    try {
-      salvarLancamentos(novaLista);
-    } catch {
-      setErro("O lançamento foi salvo no Supabase, mas não foi possível atualizar o armazenamento local.");
-    }
 
     const estavaEditando = indiceEmEdicao !== null;
     limparFormulario();
@@ -225,6 +223,7 @@ function Lancamentos({
           .from("lancamentos")
           .delete()
           .eq("id", lancamento.supabaseId)
+          .eq("user_id", usuarioId)
           .select("id")
           .single();
         if (erroSupabase) throw new Error(erroSupabase.message);
@@ -235,15 +234,6 @@ function Lancamentos({
     }
 
     onLancamentosChange(novaLista);
-    try {
-      salvarLancamentos(novaLista);
-    } catch {
-      setErro(
-        lancamento.supabaseId
-          ? "O lançamento foi excluído do Supabase, mas não foi possível atualizar o armazenamento local."
-          : "O lançamento foi removido da lista, mas não foi possível atualizar o armazenamento local.",
-      );
-    }
     if (indiceEmEdicao === indice) {
       limparFormulario();
     } else if (indiceEmEdicao !== null && indice < indiceEmEdicao) {
