@@ -12,7 +12,7 @@ Aplicação desenvolvida em React para gerenciamento financeiro pessoal.
 - Controle de cartões
 - Metas de economia
 - Filtros por período
-- Persistência com LocalStorage
+- Gravação de lançamentos no Supabase, com cópia local no navegador
 
 ## Tecnologias
 
@@ -21,3 +21,10 @@ Aplicação desenvolvida em React para gerenciamento financeiro pessoal.
 - React Router
 - Recharts
 - JavaScript
+
+## Supabase
+
+Configure `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` no ambiente da aplicação.
+Antes de usar a gravação de lançamentos, execute o SQL de
+[`supabase/migrations/20261008131000_add_installment_columns.sql`](./supabase/migrations/20261008131000_add_installment_columns.sql)
+no SQL Editor do Supabase para adicionar as colunas de parcelas à tabela `lancamentos`.

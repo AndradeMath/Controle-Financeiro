@@ -2,6 +2,7 @@ import { useState } from "react";
 import { salvarLancamentos } from "../services/storage";
 import { categorias } from "../data/categorias";
 import "./lancamentos.css";
+import { supabase } from "../lib/supabase";
 
 function formatarData(data) {
   return new Intl.DateTimeFormat("pt-BR").format(new Date(`${data}T00:00:00`));
@@ -33,6 +34,7 @@ function Lancamentos({
   const [valor, setValor] = useState("");
   const [erro, setErro] = useState("");
   const [sucesso, setSucesso] = useState("");
+  const [salvando, setSalvando] = useState(false);
   const [indiceEmEdicao, setIndiceEmEdicao] = useState(null);
 
   function limparFormulario() {
@@ -49,7 +51,22 @@ function Lancamentos({
     setIndiceEmEdicao(null);
   }
 
-  function salvarLancamento(event) {
+  function mapearParaSupabase(lancamento) {
+    return {
+      descricao: lancamento.descricao,
+      categoria: lancamento.categoria,
+      subcategoria: lancamento.subcategoria || null,
+      data: lancamento.data,
+      tipo: lancamento.tipo,
+      forma_pagamento: lancamento.formaPagamento,
+      cartao: lancamento.cartaoId || null,
+      valor: lancamento.valor,
+      parcelaAtual: lancamento.parcelaAtual ?? null,
+      totalParcelas: lancamento.totalParcelas ?? null,
+    };
+  }
+
+  async function salvarLancamento(event) {
     event.preventDefault();
     setErro("");
     setSucesso("");
@@ -91,6 +108,9 @@ function Lancamentos({
               0,
             ) + 1
           : lancamentos[indiceEmEdicao].idTransacao,
+      ...(indiceEmEdicao !== null && lancamentos[indiceEmEdicao].supabaseId
+        ? { supabaseId: lancamentos[indiceEmEdicao].supabaseId }
+        : {}),
       data,
       descricao: descricaoLimpa,
       categoria: categoriaLimpa,
@@ -115,25 +135,52 @@ function Lancamentos({
       novaLista[indiceEmEdicao] = novoLancamento;
     }
 
+    setSalvando(true);
     try {
-      salvarLancamentos(novaLista);
-    } catch {
-      setErro(
-        indiceEmEdicao === null
-          ? "Não foi possível salvar o lançamento. Tente novamente."
-          : "Não foi possível atualizar o lançamento. Tente novamente.",
-      );
+      let lancamentoPersistido = novoLancamento;
+      const supabaseId = novoLancamento.supabaseId;
+      const resposta = supabaseId
+        ? await supabase
+            .from("lancamentos")
+            .update(mapearParaSupabase(novoLancamento))
+            .eq("id", supabaseId)
+            .select("id")
+            .single()
+        : await supabase
+            .from("lancamentos")
+            .insert(mapearParaSupabase(novoLancamento))
+            .select("id")
+            .single();
+
+      if (resposta.error) throw new Error(resposta.error.message);
+
+      lancamentoPersistido = {
+        ...novoLancamento,
+        supabaseId: resposta.data.id,
+      };
+      novaLista[indiceEmEdicao === null ? novaLista.length - 1 : indiceEmEdicao] =
+        lancamentoPersistido;
+    } catch (erroSupabase) {
+      setErro(`Não foi possível salvar no Supabase: ${erroSupabase.message}`);
+      setSalvando(false);
       return;
     }
 
     onLancamentosChange(novaLista);
+    try {
+      salvarLancamentos(novaLista);
+    } catch {
+      setErro("O lançamento foi salvo no Supabase, mas não foi possível atualizar o armazenamento local.");
+    }
+
     const estavaEditando = indiceEmEdicao !== null;
     limparFormulario();
     setSucesso(
       estavaEditando
-        ? "Lançamento atualizado com sucesso."
-        : "Lançamento salvo com sucesso.",
+        ? "Lançamento atualizado com sucesso no Supabase."
+        : "Lançamento salvo com sucesso no Supabase.",
     );
+    setSalvando(false);
   }
 
   function editarLancamento(indice) {
@@ -160,7 +207,7 @@ function Lancamentos({
     setSucesso("");
   }
 
-  function excluirLancamento(indice) {
+  async function excluirLancamento(indice) {
     const lancamento = lancamentos[indice];
     const confirmado = window.confirm(
       `Deseja excluir o lançamento "${lancamento.descricao}"?`,
@@ -170,22 +217,43 @@ function Lancamentos({
 
     const novaLista = lancamentos.filter((_, itemIndice) => itemIndice !== indice);
 
+    setErro("");
+    setSucesso("");
     try {
-      salvarLancamentos(novaLista);
-    } catch {
-      setErro("Não foi possível excluir o lançamento. Tente novamente.");
-      setSucesso("");
+      if (lancamento.supabaseId) {
+        const { error: erroSupabase } = await supabase
+          .from("lancamentos")
+          .delete()
+          .eq("id", lancamento.supabaseId)
+          .select("id")
+          .single();
+        if (erroSupabase) throw new Error(erroSupabase.message);
+      }
+    } catch (erroSupabase) {
+      setErro(`Não foi possível excluir o lançamento: ${erroSupabase.message}`);
       return;
     }
 
     onLancamentosChange(novaLista);
+    try {
+      salvarLancamentos(novaLista);
+    } catch {
+      setErro(
+        lancamento.supabaseId
+          ? "O lançamento foi excluído do Supabase, mas não foi possível atualizar o armazenamento local."
+          : "O lançamento foi removido da lista, mas não foi possível atualizar o armazenamento local.",
+      );
+    }
     if (indiceEmEdicao === indice) {
       limparFormulario();
     } else if (indiceEmEdicao !== null && indice < indiceEmEdicao) {
       setIndiceEmEdicao(indiceEmEdicao - 1);
     }
-    setErro("");
-    setSucesso("Lançamento excluído com sucesso.");
+    setSucesso(
+      lancamento.supabaseId
+        ? "Lançamento excluído com sucesso no Supabase."
+        : "Lançamento local excluído com sucesso.",
+    );
   }
 
   const lancamentosDoMes = lancamentos
@@ -373,13 +441,18 @@ function Lancamentos({
           </label>
 
           <div className="lancamentos__botoes-formulario">
-            <button type="submit">
-              {indiceEmEdicao === null ? "Salvar lançamento" : "Salvar alterações"}
+            <button type="submit" disabled={salvando}>
+              {salvando
+                ? "Salvando..."
+                : indiceEmEdicao === null
+                  ? "Salvar lançamento"
+                  : "Salvar alterações"}
             </button>
             {indiceEmEdicao !== null && (
               <button
                 className="lancamentos__cancelar"
                 type="button"
+                disabled={salvando}
                 onClick={() => {
                   limparFormulario();
                   setErro("");
@@ -431,6 +504,7 @@ function Lancamentos({
                       className="lancamentos__editar"
                       type="button"
                       aria-label={`Editar lançamento ${lancamento.descricao}`}
+                      disabled={salvando}
                       onClick={() => editarLancamento(indiceOriginal)}
                     >
                       Editar
@@ -439,6 +513,7 @@ function Lancamentos({
                       className="lancamentos__excluir"
                       type="button"
                       aria-label={`Excluir lançamento ${lancamento.descricao}`}
+                      disabled={salvando}
                       onClick={() => excluirLancamento(indiceOriginal)}
                     >
                       Excluir
