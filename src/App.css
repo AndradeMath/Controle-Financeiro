@@ -86,6 +86,51 @@
   margin-top: 48px;
 }
 
+.barra-lateral__conta {
+  display: grid;
+  gap: 10px;
+  margin-top: auto;
+  padding: 16px 10px 0;
+}
+
+.barra-lateral__usuario {
+  overflow-wrap: anywhere;
+  color: var(--texto-suave);
+  font-size: 12px;
+}
+
+.barra-lateral__sair {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  color: var(--texto-suave);
+  background: var(--superficie);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.barra-lateral__sair:hover {
+  border-color: var(--realce);
+  color: var(--realce);
+  background: var(--superficie-sutil);
+}
+
+.barra-lateral__sair:focus-visible {
+  outline: 2px solid var(--realce);
+  outline-offset: 2px;
+}
+
+.barra-lateral__erro {
+  color: #b42318;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .barra-lateral__rotulo {
   margin: 0 10px 8px;
   color: var(--texto-suave);
@@ -127,7 +172,7 @@
 }
 
 .barra-lateral__rodape {
-  margin: auto 10px 0;
+  margin: 4px 0 0;
   color: var(--texto-suave);
   font-size: 12px;
 }
@@ -227,6 +272,21 @@
   .barra-lateral__rotulo,
   .barra-lateral__rodape {
     display: none;
+  }
+
+  .barra-lateral__conta {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 0 0;
+  }
+
+  .barra-lateral__sair {
+    min-height: 36px;
+  }
+
+  .barra-lateral__erro {
+    grid-column: 1 / -1;
   }
 
   .barra-lateral__link {
