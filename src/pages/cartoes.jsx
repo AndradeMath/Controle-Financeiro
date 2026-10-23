@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import "./cartoes.css";
 
 function emCentavos(valor) {
@@ -37,6 +38,7 @@ function Cartoes({
   mesSelecionado,
   onMesChange,
   onCartoesChange,
+  modoEdicao = false,
 }) {
   const [cartoesEditados, setCartoesEditados] = useState(() =>
     cartoes.map((cartao) => ({ ...cartao })),
@@ -44,8 +46,8 @@ function Cartoes({
   const [mensagem, setMensagem] = useState("");
   const [erro, setErro] = useState("");
   const cartaoIds = useMemo(
-    () => new Set(cartoes.map((cartao) => cartao.id)),
-    [cartoes],
+    () => new Set(cartoesEditados.map((cartao) => cartao.id)),
+    [cartoesEditados],
   );
 
   const gastosPorCartao = useMemo(
@@ -98,6 +100,115 @@ function Cartoes({
     0,
   );
 
+  if (!modoEdicao) {
+    return (
+      <main className="cartoes">
+        <header className="cartoes__cabecalho">
+          <div>
+            <p className="cartoes__identificacao">CONTROLE DE CARTÕES</p>
+            <h1>Cartões</h1>
+            <p>Acompanhe seus cartões, limites e gastos do período selecionado.</p>
+          </div>
+          <label className="cartoes__filtro">
+            Mês de referência
+            <input
+              type="month"
+              value={mesSelecionado}
+              onChange={(event) => onMesChange(event.target.value)}
+            />
+          </label>
+        </header>
+
+        <section className="cartoes__resumo" aria-label="Resumo de cartões">
+          <article className="cartoes__resumo-card">
+            <span>Cartões cadastrados</span>
+            <strong>{cartoes.length}</strong>
+          </article>
+          <article className="cartoes__resumo-card">
+            <span>Gastos vinculados</span>
+            <strong>{formatarValor(gastoVinculado / 100)}</strong>
+            <small>{formatarMes(mesSelecionado)}</small>
+          </article>
+          <article className="cartoes__resumo-card">
+            <span>Despesas sem cartão</span>
+            <strong>{formatarValor(gastoSemCartao / 100)}</strong>
+            <small>{despesasSemCartao.length} {despesasSemCartao.length === 1 ? "lançamento" : "lançamentos"}</small>
+          </article>
+          <article className="cartoes__resumo-card">
+            <span>Limite total cadastrado</span>
+            <strong>{formatarValor(totalLimites / 100)}</strong>
+          </article>
+        </section>
+
+        <section className="cartoes__painel" aria-labelledby="cartoes-lista-titulo">
+          <div className="cartoes__painel-cabecalho">
+            <div>
+              <h2 id="cartoes-lista-titulo">Seus cartões</h2>
+              <p>Confira o limite disponível e o uso de cada cartão.</p>
+            </div>
+            <Link className="cartoes__salvar cartoes__editar-link" to="/cartoes/editar">
+              Editar cartões
+            </Link>
+          </div>
+
+          {linhas.length === 0 ? (
+            <p className="cartoes__vazio-cartoes">
+              Nenhum cartão cadastrado. Selecione “Editar cartões” para adicionar o primeiro.
+            </p>
+          ) : (
+            <div className="cartoes__lista">
+              {linhas.map((cartao) => (
+                <article className="cartoes__cartao" key={cartao.id}>
+                  <div className="cartoes__cartao-cabecalho">
+                    <div>
+                      <span>{cartao.banco}</span>
+                      <h3>{cartao.nome}</h3>
+                    </div>
+                    <span className={`cartoes__status cartoes__status--${cartao.status.classe}`}>
+                      {cartao.status.texto}
+                    </span>
+                  </div>
+                  <div className="cartoes__cartao-valores">
+                    <div>
+                      <span>Limite</span>
+                      <strong>{formatarValor(cartao.limiteCentavos / 100)}</strong>
+                    </div>
+                    <div>
+                      <span>Gasto no período</span>
+                      <strong>{formatarValor(cartao.gastoCentavos / 100)}</strong>
+                    </div>
+                    <div>
+                      <span>Disponível</span>
+                      <strong className={cartao.disponivelCentavos < 0 ? "cartoes__negativo" : ""}>
+                        {formatarValor(cartao.disponivelCentavos / 100)}
+                      </strong>
+                    </div>
+                  </div>
+                  <div
+                    className="cartoes__progresso cartoes__cartao-progresso"
+                    role="progressbar"
+                    aria-label={`Limite utilizado no cartão ${cartao.nome}`}
+                    aria-valuenow={Math.min(cartao.percentual, 100)}
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                  >
+                    <span
+                      className={`cartoes__progresso-barra cartoes__progresso-barra--${cartao.status.classe}`}
+                      style={{ width: `${Math.min(cartao.percentual, 100)}%` }}
+                    />
+                  </div>
+                  <p className="cartoes__cartao-datas">
+                    Fechamento: {cartao.fechamento || "não informado"} · Vencimento: {cartao.vencimento || "não informado"}
+                  </p>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      </main>
+    );
+  }
+
   function atualizarCartao(id, campo, valor) {
     setCartoesEditados((atuais) =>
       atuais.map((cartao) =>
@@ -105,6 +216,34 @@ function Cartoes({
       ),
     );
     setMensagem("");
+    setErro("");
+  }
+
+  function adicionarCartao() {
+    const novoCartao = {
+      id: `cartao-${crypto.randomUUID()}`,
+      banco: "",
+      nome: "",
+      limite: 0,
+      fechamento: "",
+      vencimento: "",
+    };
+
+    setCartoesEditados((atuais) => [...atuais, novoCartao]);
+    setMensagem("Cartão adicionado à lista. Preencha os dados e salve as configurações.");
+    setErro("");
+  }
+
+  function removerCartao(cartao) {
+    const confirmado = window.confirm(
+      `Remover o cartão ${cartao.nome || cartao.banco || "sem nome"} da lista? Os lançamentos existentes serão preservados.`,
+    );
+    if (!confirmado) return;
+
+    setCartoesEditados((atuais) =>
+      atuais.filter((item) => item.id !== cartao.id),
+    );
+    setMensagem("Cartão removido da lista. Salve as configurações para confirmar.");
     setErro("");
   }
 
@@ -118,6 +257,8 @@ function Cartoes({
       const fechamento = cartao.fechamento === "" ? null : Number(cartao.fechamento);
       const vencimento = cartao.vencimento === "" ? null : Number(cartao.vencimento);
       return (
+        !cartao.banco.trim() ||
+        !cartao.nome.trim() ||
         !Number.isFinite(limite) ||
         limite < 0 ||
         (fechamento !== null && (!Number.isInteger(fechamento) || fechamento < 1 || fechamento > 31)) ||
@@ -126,12 +267,14 @@ function Cartoes({
     });
 
     if (cartoesInvalidos.length > 0) {
-      setErro("Confira os limites e informe dias entre 1 e 31.");
+      setErro("Preencha o banco e o nome do cartão, confira os limites e informe dias entre 1 e 31.");
       return;
     }
 
     const cartoesSalvos = cartoesEditados.map((cartao) => ({
       ...cartao,
+      banco: cartao.banco.trim(),
+      nome: cartao.nome.trim(),
       limite: Number(cartao.limite || 0),
       fechamento: cartao.fechamento === "" ? "" : Number(cartao.fechamento),
       vencimento: cartao.vencimento === "" ? "" : Number(cartao.vencimento),
@@ -153,23 +296,16 @@ function Cartoes({
       <header className="cartoes__cabecalho">
         <div>
           <p className="cartoes__identificacao">CONTROLE DE CARTÕES</p>
-          <h1>Cartões</h1>
-          <p>Cadastre limites e acompanhe os gastos do período selecionado.</p>
+          <h1>Editar cartões</h1>
+          <p>Atualize os cartões cadastrados ou inclua novos cartões.</p>
         </div>
-        <label className="cartoes__filtro">
-          Mês de referência
-          <input
-            type="month"
-            value={mesSelecionado}
-            onChange={(event) => onMesChange(event.target.value)}
-          />
-        </label>
+        <Link className="cartoes__voltar" to="/cartoes">Voltar para cartões</Link>
       </header>
 
       <section className="cartoes__resumo" aria-label="Resumo de cartões">
         <article className="cartoes__resumo-card">
           <span>Cartões cadastrados</span>
-          <strong>{cartoes.length}</strong>
+          <strong>{cartoesEditados.length}</strong>
         </article>
         <article className="cartoes__resumo-card">
           <span>Gastos vinculados</span>
@@ -192,11 +328,20 @@ function Cartoes({
           <div className="cartoes__painel-cabecalho">
             <div>
               <h2 id="cartoes-tabela-titulo">Cartões cadastrados</h2>
-              <p>Informe os limites e os dias de fechamento e vencimento.</p>
+              <p>Edite os dados, os limites e os dias de fechamento e vencimento.</p>
             </div>
-            <button className="cartoes__salvar" type="submit">
-              Salvar configurações
-            </button>
+            <div className="cartoes__acoes-cabecalho">
+              <button
+                className="cartoes__adicionar"
+                type="button"
+                onClick={adicionarCartao}
+              >
+                Adicionar cartão
+              </button>
+              <button className="cartoes__salvar" type="submit">
+                Salvar configurações
+              </button>
+            </div>
           </div>
 
           <div className="cartoes__tabela-container">
@@ -212,13 +357,49 @@ function Cartoes({
                   <th scope="col">Limite disponível</th>
                   <th scope="col">% utilizado</th>
                   <th scope="col">Status</th>
+                  <th scope="col">Ações</th>
                 </tr>
               </thead>
               <tbody>
+                {linhas.length === 0 && (
+                  <tr>
+                    <td className="cartoes__vazio" colSpan="10">
+                      Nenhum cartão cadastrado. Use “Adicionar cartão” para começar.
+                    </td>
+                  </tr>
+                )}
                 {linhas.map((cartao) => (
                   <tr key={cartao.id}>
-                    <th scope="row">{cartao.banco}</th>
-                    <td>{cartao.nome}</td>
+                    <th scope="row">
+                      <label className="cartoes__texto">
+                        <span className="cartoes__sr-only">Banco do cartão {cartao.nome || "novo"}</span>
+                        <input
+                          type="text"
+                          maxLength="40"
+                          placeholder="Banco"
+                          value={cartao.banco}
+                          onChange={(event) =>
+                            atualizarCartao(cartao.id, "banco", event.target.value)
+                          }
+                          required
+                        />
+                      </label>
+                    </th>
+                    <td>
+                      <label className="cartoes__texto">
+                        <span className="cartoes__sr-only">Nome do cartão {cartao.banco || "novo"}</span>
+                        <input
+                          type="text"
+                          maxLength="40"
+                          placeholder="Nome do cartão"
+                          value={cartao.nome}
+                          onChange={(event) =>
+                            atualizarCartao(cartao.id, "nome", event.target.value)
+                          }
+                          required
+                        />
+                      </label>
+                    </td>
                     <td>
                       <label className="cartoes__entrada">
                         <span className="cartoes__sr-only">Limite do cartão {cartao.nome}</span>
@@ -292,6 +473,16 @@ function Cartoes({
                         {cartao.status.texto}
                       </span>
                     </td>
+                    <td>
+                      <button
+                        className="cartoes__remover"
+                        type="button"
+                        onClick={() => removerCartao(cartao)}
+                        aria-label={`Remover cartão ${cartao.nome || cartao.banco || "sem nome"}`}
+                      >
+                        Remover
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -308,6 +499,7 @@ function Cartoes({
                       : "—"}
                   </td>
                   <td>—</td>
+                  <td>—</td>
                 </tr>
               </tfoot>
             </table>
@@ -317,7 +509,7 @@ function Cartoes({
           {mensagem && <p className="cartoes__mensagem" role="status">{mensagem}</p>}
           <p className="cartoes__nota">
             Para incluir uma despesa nos gastos de um cartão, selecione-o no formulário de Lançamentos.
-            Despesas sem cartão continuam registradas, mas não reduzem o limite dos cartões.
+            Despesas sem cartão continuam registradas, mas não reduzem o limite dos cartões. Ao remover um cartão, seus lançamentos existentes são preservados e ficam sem vínculo com cartão.
           </p>
         </section>
       </form>

@@ -27,7 +27,8 @@
 | 🧾 **Parcelamentos** | Consulta de compras parceladas e parcelas |
 | 🏷️ **Organização** | Categorias, subcategorias, centros de custo e formas de pagamento |
 | 📊 **Acompanhamento** | Dashboard, gráficos e filtros por período |
-| 📄 **Exportação** | Relatórios em planilha `.xlsx` |
+| 📄 **Exportação e backup** | Relatórios `.xlsx`; exportação e restauração de backup completo em `.json` |
+| 💾 **Backup automático** | Cópia local automática dos dados no IndexedDB do navegador, separada por conta |
 | 🎨 **Experiência** | Temas claro e escuro e layout responsivo |
 
 ## 🧰 Tecnologias
@@ -105,7 +106,9 @@ supabase/
 - O Supabase Auth mantém e restaura a sessão do usuário.
 - As páginas protegidas recebem a identidade pelo contexto `useAuth`.
 - Os lançamentos são consultados no Supabase filtrando pelo usuário autenticado e são salvos com seu `user_id`.
+- Um espelho automático dos dados é mantido no IndexedDB do navegador, separado por conta, para recuperar os dados quando a conexão ou o Supabase estiverem indisponíveis. Esse espelho fica apenas neste dispositivo e não substitui a exportação JSON como backup externo.
 - A autorização definitiva dos dados deve ser garantida pelas políticas RLS no banco; filtros da interface não substituem essas políticas.
+- O backup JSON inclui lançamentos, orçamentos, cartões, centros de custo, metas e tema. Restaurar um backup compatível substitui esses dados; IDs internos do Supabase não são exportados.
 
 ## 🧭 Próximas melhorias
 

@@ -38,6 +38,8 @@ import {
 import { supabase } from "./lib/supabase";
 import { AuthContext } from "./contexts/AuthContext";
 import { carregarLancamentosDoUsuario } from "./services/lancamentosSupabase";
+import { restaurarBackupJson } from "./services/backupJson";
+import { carregarBackupLocal, salvarBackupLocal } from "./services/indexedDb";
 import "./App.css";
 
 const paginas = [
@@ -58,6 +60,11 @@ function App() {
   const [lancamentosCarregadosParaUsuarioId, setLancamentosCarregadosParaUsuarioId] = useState(null);
   const [erroLancamentos, setErroLancamentos] = useState(null);
   const [tentativaCargaLancamentos, setTentativaCargaLancamentos] = useState(0);
+  const [dadosLocaisDisponiveisParaUsuarioId, setDadosLocaisDisponiveisParaUsuarioId] = useState(null);
+  const [statusBackupLocal, setStatusBackupLocal] = useState({
+    estado: "carregando",
+    mensagem: "",
+  });
   const contextoAutenticacao = useMemo(
     () => ({
       session: sessao,
@@ -126,23 +133,102 @@ function App() {
       };
     }
 
-    carregarLancamentosDoUsuario(usuarioId)
-      .then((dados) => {
+    async function carregarDados() {
+      let backupLocal = null;
+      try {
+        backupLocal = await carregarBackupLocal(usuarioId);
+        if (!componenteAtivo) return;
+        if (backupLocal) {
+          setLancamentos(backupLocal.dados.lancamentos);
+          setOrcamentos(backupLocal.dados.orcamentos);
+          setCartoes(backupLocal.dados.cartoes);
+          setCentrosDeCusto(backupLocal.dados.centrosDeCusto);
+          setMetasEconomia(backupLocal.dados.metasEconomia);
+          setTema(backupLocal.dados.tema);
+          setDadosLocaisDisponiveisParaUsuarioId(usuarioId);
+          setLancamentosCarregadosParaUsuarioId(usuarioId);
+          setStatusBackupLocal({
+            estado: "salvo",
+            mensagem: `Backup local atualizado em ${new Date(backupLocal.salvoEm).toLocaleString("pt-BR")}.`,
+          });
+        }
+      } catch (erro) {
+        if (componenteAtivo) {
+          setStatusBackupLocal({ estado: "erro", mensagem: erro.message });
+        }
+      }
+
+      try {
+        const dados = await carregarLancamentosDoUsuario(usuarioId);
         if (!componenteAtivo) return;
         setLancamentos(dados);
         setLancamentosCarregadosParaUsuarioId(usuarioId);
         setErroLancamentos(null);
-      })
-      .catch((erro) => {
-        if (componenteAtivo) {
-          setErroLancamentos({ usuarioId, mensagem: erro.message });
+      } catch (erro) {
+        if (!componenteAtivo) return;
+        setErroLancamentos({ usuarioId, mensagem: erro.message });
+        if (backupLocal) {
+          setLancamentosCarregadosParaUsuarioId(usuarioId);
         }
-      });
+      }
+    }
+
+    Promise.resolve().then(() => {
+      if (componenteAtivo) {
+        setStatusBackupLocal({ estado: "carregando", mensagem: "" });
+      }
+    });
+    carregarDados();
 
     return () => {
       componenteAtivo = false;
     };
   }, [sessao?.user?.id, tentativaCargaLancamentos]);
+
+  useEffect(() => {
+    const usuarioId = sessao?.user?.id;
+    if (!usuarioId || lancamentosCarregadosParaUsuarioId !== usuarioId) return;
+
+    let componenteAtivo = true;
+    Promise.resolve().then(() => {
+      if (componenteAtivo) {
+        setStatusBackupLocal({ estado: "salvando", mensagem: "" });
+      }
+    });
+    salvarBackupLocal(usuarioId, {
+      lancamentos,
+      orcamentos,
+      cartoes,
+      centrosDeCusto,
+      metasEconomia,
+      tema,
+    })
+      .then((salvoEm) => {
+        if (!componenteAtivo) return;
+        setDadosLocaisDisponiveisParaUsuarioId(usuarioId);
+        setStatusBackupLocal({
+          estado: "salvo",
+          mensagem: `Backup local atualizado em ${new Date(salvoEm).toLocaleString("pt-BR")}.`,
+        });
+      })
+      .catch((erro) => {
+        if (!componenteAtivo) return;
+        setStatusBackupLocal({ estado: "erro", mensagem: erro.message });
+      });
+
+    return () => {
+      componenteAtivo = false;
+    };
+  }, [
+    sessao?.user?.id,
+    lancamentosCarregadosParaUsuarioId,
+    lancamentos,
+    orcamentos,
+    cartoes,
+    centrosDeCusto,
+    metasEconomia,
+    tema,
+  ]);
 
   async function sair() {
     setErroSaida("");
@@ -182,6 +268,17 @@ function App() {
     } catch {
       setErroTema("Não foi possível salvar sua preferência neste navegador.");
     }
+  }
+
+  async function restaurarBackup(backup) {
+    const dados = await restaurarBackupJson(backup, sessao.user.id);
+    setLancamentos(dados.lancamentos);
+    setOrcamentos(dados.orcamentos);
+    setCartoes(dados.cartoes);
+    setCentrosDeCusto(dados.centrosDeCusto);
+    setMetasEconomia(dados.metasEconomia);
+    setTema(dados.tema);
+    setErroTema("");
   }
 
   if (carregandoSessao) {
@@ -224,7 +321,10 @@ function App() {
     );
   }
 
-  if (erroLancamentos?.usuarioId === sessao.user.id) {
+  if (
+    erroLancamentos?.usuarioId === sessao.user.id &&
+    dadosLocaisDisponiveisParaUsuarioId !== sessao.user.id
+  ) {
     return (
       <main className="autenticacao-carregando" role="alert">
         <p>{erroLancamentos.mensagem}</p>
@@ -335,7 +435,21 @@ function App() {
             path="/cartoes"
             element={
               <Cartoes
-                key={mesSelecionado}
+                key="visao-cartoes"
+                cartoes={cartoes}
+                lancamentos={lancamentosDoMes}
+                mesSelecionado={mesSelecionado}
+                onMesChange={setMesSelecionado}
+                onCartoesChange={atualizarCartoes}
+              />
+            }
+          />
+          <Route
+            path="/cartoes/editar"
+            element={
+              <Cartoes
+                key="editar-cartoes"
+                modoEdicao
                 cartoes={cartoes}
                 lancamentos={lancamentosDoMes}
                 mesSelecionado={mesSelecionado}
@@ -379,6 +493,8 @@ function App() {
                 metasEconomia={metasEconomia}
                 mesSelecionado={mesSelecionado}
                 onMesChange={setMesSelecionado}
+                onRestaurarBackup={restaurarBackup}
+                statusBackupLocal={statusBackupLocal}
               />
             }
           />
